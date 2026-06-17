@@ -20,6 +20,9 @@
   <!-- PDF Libraries (Local) -->
   <script src="html2canvas.min.js"></script>
   <script src="jspdf.umd.min.js"></script>
+
+  <!-- Supabase Auth -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
 
@@ -206,6 +209,675 @@
 
   <script type="text/babel">
     const { useState, useEffect, useRef, useMemo, useLayoutEffect } = React;
+
+    // =====================================================================
+    // SUPABASE CONFIG — Reemplazar con tus credenciales reales
+    // =====================================================================
+    const SUPABASE_URL      = 'TU_SUPABASE_PROJECT_URL';
+    const SUPABASE_ANON_KEY = 'TU_SUPABASE_ANON_KEY';
+    const GOOGLE_FORM_URL   = 'TU_URL_GOOGLE_FORM';
+    const { createClient }  = supabase;
+    const sb                = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // =====================================================================
+    // COMPONENTES DE AUTH
+    // =====================================================================
+
+    const LoadingScreen = ({ message = 'Verificando acceso...' }) => (
+      <div className="min-h-screen flex items-center justify-center"
+           style={{ background: '#131D47' }}>
+        <div className="text-center">
+          <div className="w-14 h-14 border-4 border-white/10 border-t-[#5DDADB] rounded-full animate-spin mx-auto mb-5"></div>
+          <p className="text-white/70 text-sm font-medium">{message}</p>
+        </div>
+      </div>
+    );
+
+    const AuthCard = ({ children }) => (
+      <div className="min-h-screen flex items-center justify-center p-4"
+           style={{ background: 'linear-gradient(135deg, #131D47 0%, #1a2560 50%, #131D47 100%)' }}>
+        <div style={{ maxWidth: 420, width: '100%' }}>
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-white tracking-tight">
+              COTIZADOR <span style={{ color: '#5DDADB' }}>3DBAT</span>
+            </h1>
+            <p className="text-lg font-bold" style={{ color: '#F78EB6' }}>PRO 2.0</p>
+            <p className="text-white/50 text-sm mt-2">Herramienta exclusiva para miembros del Makers Club 3DBAT</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 p-8"
+               style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)' }}>
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+
+    const GoogleIcon = () => (
+      <svg width="20" height="20" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        <path fill="none" d="M0 0h48v48H0z"/>
+      </svg>
+    );
+
+    const StatusBadge = ({ status }) => {
+      const cfg = {
+        pending:   { label: 'Pendiente',  bg: 'rgba(251,191,36,0.15)',  border: 'rgba(251,191,36,0.4)',  text: '#FBBF24' },
+        approved:  { label: 'Aprobado',   bg: 'rgba(52,211,153,0.15)',  border: 'rgba(52,211,153,0.4)',  text: '#34D399' },
+        rejected:  { label: 'Rechazado',  bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.4)',   text: '#EF4444' },
+        suspended: { label: 'Suspendido', bg: 'rgba(249,115,22,0.15)',  border: 'rgba(249,115,22,0.4)',  text: '#F97316' },
+        expired:   { label: 'Vencido',    bg: 'rgba(156,163,175,0.15)', border: 'rgba(156,163,175,0.4)', text: '#9CA3AF' },
+      }[status] || { label: status, bg: 'rgba(255,255,255,0.1)', border: 'rgba(255,255,255,0.2)', text: '#fff' };
+      return (
+        <span className="text-xs font-bold px-3 py-1 rounded-full border"
+              style={{ background: cfg.bg, borderColor: cfg.border, color: cfg.text }}>
+          {cfg.label}
+        </span>
+      );
+    };
+
+    const LoginScreen = () => {
+      const [loading, setLoading] = useState(false);
+      const [error, setError]     = useState(null);
+
+      const signInWithGoogle = async () => {
+        setLoading(true);
+        setError(null);
+        const redirectTo = window.location.href.split('#')[0].split('?')[0];
+        const { error: e } = await sb.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo }
+        });
+        if (e) { setError('Error al conectar con Google. Intentá de nuevo.'); setLoading(false); }
+      };
+
+      return (
+        <AuthCard>
+          <div className="rounded-2xl p-4 mb-6 border"
+               style={{ background: 'rgba(52,55,162,0.2)', borderColor: 'rgba(52,55,162,0.4)' }}>
+            <p className="text-white/70 text-sm text-center leading-relaxed">
+              Para ingresar necesitás ser miembro activo del Makers Club 3DBAT.
+              Completá la solicitud usando el mismo correo de Google con el que vas a iniciar sesión.
+            </p>
+          </div>
+          {error && (
+            <div className="rounded-2xl p-3 mb-4 border"
+                 style={{ background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.4)' }}>
+              <p className="text-red-400 text-sm text-center">{error}</p>
+            </div>
+          )}
+          <button onClick={signInWithGoogle} disabled={loading}
+            className="w-full flex items-center justify-center gap-3 font-bold py-4 px-6 rounded-2xl transition-all mb-4 disabled:opacity-50"
+            style={{ background: loading ? '#d1d5db' : 'white', color: '#1f2937', cursor: loading ? 'not-allowed' : 'pointer' }}>
+            {loading
+              ? <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin"></div>
+              : <GoogleIcon />}
+            {loading ? 'Conectando...' : 'Continuar con Google'}
+          </button>
+          <a href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 font-semibold py-4 px-6 rounded-2xl transition-all border text-sm"
+            style={{ color: '#5DDADB', borderColor: 'rgba(93,218,219,0.35)', background: 'rgba(93,218,219,0.08)' }}>
+            Solicitar acceso al Makers Club 3DBAT →
+          </a>
+          <p className="text-center text-white/30 text-xs mt-6">
+            El acceso será habilitado una vez que el administrador verifique tu membresía.
+          </p>
+        </AuthCard>
+      );
+    };
+
+    const StatusScreen = ({ title, message, extra, member, onSignOut, onRecheck }) => (
+      <AuthCard>
+        <div className="text-center mb-6">
+          <p className="text-white text-lg font-bold mb-2">{title}</p>
+          <p className="text-white/60 text-sm leading-relaxed">{message}</p>
+          {extra && <p className="text-white/40 text-xs mt-3 leading-relaxed">{extra}</p>}
+          {member && (
+            <div className="mt-4 rounded-xl p-3 text-xs text-white/50"
+                 style={{ background: 'rgba(255,255,255,0.04)' }}>
+              {member.email}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-3">
+          {onRecheck && (
+            <button onClick={onRecheck}
+              className="w-full py-3 rounded-2xl font-bold text-sm transition-all"
+              style={{ background: 'rgba(93,218,219,0.15)', color: '#5DDADB', border: '1px solid rgba(93,218,219,0.3)' }}>
+              Volver a comprobar acceso
+            </button>
+          )}
+          <a href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer"
+            className="w-full flex items-center justify-center py-3 rounded-2xl font-bold text-sm transition-all"
+            style={{ background: 'rgba(52,55,162,0.2)', color: '#a5b4fc', border: '1px solid rgba(52,55,162,0.4)' }}>
+            Solicitar acceso
+          </a>
+          <button onClick={onSignOut}
+            className="w-full py-3 rounded-2xl font-bold text-sm text-white/40 hover:text-white/70 transition-all"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            Cerrar sesión
+          </button>
+        </div>
+      </AuthCard>
+    );
+
+    // =====================================================================
+    // PANEL DE ADMINISTRACIÓN
+    // =====================================================================
+    const AdminPanel = ({ onSignOut, onGoToCotizador }) => {
+      const [members, setMembers]             = useState([]);
+      const [loading, setLoading]             = useState(true);
+      const [search, setSearch]               = useState('');
+      const [filterStatus, setFilterStatus]   = useState('all');
+      const [selected, setSelected]           = useState(null);
+      const [confirmAction, setConfirmAction] = useState(null);
+      const [addForm, setAddForm]             = useState({ open: false, email: '', first_name: '', last_name: '', discord: '', instagram: '', phone: '', notes: '' });
+      const [notesEdit, setNotesEdit]         = useState({ open: false, id: null, value: '' });
+      const [actionLoading, setActionLoading] = useState(false);
+      const [toast, setToast]                 = useState(null);
+
+      const showToast = (msg, ok = true) => {
+        setToast({ msg, ok });
+        setTimeout(() => setToast(null), 3500);
+      };
+
+      const loadMembers = async () => {
+        setLoading(true);
+        const { data, error } = await sb.rpc('admin_get_all_members');
+        if (error) showToast('Error al cargar miembros: ' + error.message, false);
+        else setMembers(data || []);
+        setLoading(false);
+      };
+
+      useEffect(() => { loadMembers(); }, []);
+
+      const doStatusUpdate = async (id, newStatus, notes) => {
+        setActionLoading(true);
+        const { error } = await sb.rpc('admin_update_member_status', {
+          p_member_id: id, p_new_status: newStatus, p_notes: notes || null
+        });
+        if (error) showToast('Error: ' + error.message, false);
+        else {
+          showToast('Acción aplicada');
+          await loadMembers();
+          setSelected(null);
+        }
+        setActionLoading(false);
+        setConfirmAction(null);
+      };
+
+      const doAddMember = async () => {
+        if (!addForm.email.trim()) return showToast('Ingresá un correo', false);
+        setActionLoading(true);
+        const { error } = await sb.rpc('admin_add_member', {
+          p_email:      addForm.email.trim(),
+          p_first_name: addForm.first_name || null,
+          p_last_name:  addForm.last_name  || null,
+          p_discord:    addForm.discord    || null,
+          p_instagram:  addForm.instagram  || null,
+          p_phone:      addForm.phone      || null,
+          p_notes:      addForm.notes      || null,
+        });
+        if (error) showToast('Error: ' + error.message, false);
+        else {
+          showToast('Miembro agregado');
+          await loadMembers();
+          setAddForm({ open: false, email: '', first_name: '', last_name: '', discord: '', instagram: '', phone: '', notes: '' });
+        }
+        setActionLoading(false);
+      };
+
+      const doUpdateNotes = async () => {
+        setActionLoading(true);
+        const { error } = await sb.rpc('admin_update_notes', {
+          p_member_id: notesEdit.id, p_notes: notesEdit.value
+        });
+        if (error) showToast('Error: ' + error.message, false);
+        else {
+          showToast('Notas actualizadas');
+          await loadMembers();
+          setNotesEdit({ open: false, id: null, value: '' });
+        }
+        setActionLoading(false);
+      };
+
+      const filtered = members.filter(m => {
+        const q = search.toLowerCase();
+        const matchSearch = !q
+          || m.email?.toLowerCase().includes(q)
+          || m.first_name?.toLowerCase().includes(q)
+          || m.last_name?.toLowerCase().includes(q)
+          || m.discord_username?.toLowerCase().includes(q);
+        const matchStatus = filterStatus === 'all' || m.status === filterStatus;
+        return matchSearch && matchStatus;
+      });
+
+      const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+
+      const ACTIONS = {
+        approved:   { label: 'Aprobar',    next: 'approved',  color: '#34D399', bg: 'rgba(52,211,153,0.15)',  border: 'rgba(52,211,153,0.35)' },
+        rejected:   { label: 'Rechazar',   next: 'rejected',  color: '#EF4444', bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.35)' },
+        suspended:  { label: 'Suspender',  next: 'suspended', color: '#F97316', bg: 'rgba(249,115,22,0.15)',  border: 'rgba(249,115,22,0.35)' },
+        reactivate: { label: 'Reactivar',  next: 'approved',  color: '#5DDADB', bg: 'rgba(93,218,219,0.15)',  border: 'rgba(93,218,219,0.35)' },
+        expired:    { label: 'Vencer',     next: 'expired',   color: '#9CA3AF', bg: 'rgba(156,163,175,0.15)', border: 'rgba(156,163,175,0.35)' },
+      };
+
+      const actionsFor = (status) => ({
+        pending:   ['approved', 'rejected'],
+        approved:  ['suspended', 'expired', 'rejected'],
+        suspended: ['reactivate', 'rejected'],
+        rejected:  ['reactivate'],
+        expired:   ['reactivate', 'suspended'],
+      }[status] || []);
+
+      const STAT_COLORS = { all: '#5DDADB', pending: '#FBBF24', approved: '#34D399', suspended: '#F97316', rejected: '#EF4444' };
+      const STAT_LABELS = { all: 'Total', pending: 'Pendientes', approved: 'Aprobados', suspended: 'Suspendidos', rejected: 'Rechazados' };
+
+      return (
+        <div className="min-h-screen" style={{ background: '#131D47' }}>
+
+          {/* Toast */}
+          {toast && (
+            <div className="fixed top-4 right-4 z-[400] px-5 py-3 rounded-2xl font-bold text-sm shadow-2xl"
+                 style={{ background: toast.ok ? '#34D399' : '#EF4444', color: 'white' }}>
+              {toast.msg}
+            </div>
+          )}
+
+          {/* Header */}
+          <div className="sticky top-0 z-50 border-b border-white/10"
+               style={{ background: 'rgba(19,29,71,0.96)', backdropFilter: 'blur(16px)' }}>
+            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+              <div>
+                <h1 className="text-white font-bold text-base leading-tight">Panel Admin</h1>
+                <p className="text-white/40 text-xs">Makers Club 3DBAT</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={onGoToCotizador}
+                  className="px-4 py-2 rounded-xl font-bold text-sm"
+                  style={{ background: 'rgba(93,218,219,0.15)', color: '#5DDADB', border: '1px solid rgba(93,218,219,0.3)' }}>
+                  Ir al Cotizador
+                </button>
+                <button onClick={onSignOut}
+                  className="px-4 py-2 rounded-xl font-bold text-sm text-white/50"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  Salir
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-5xl mx-auto px-4 py-6">
+
+            {/* Stats */}
+            <div className="grid grid-cols-5 gap-2 mb-5">
+              {['all','pending','approved','suspended','rejected'].map(s => {
+                const count = s === 'all' ? members.length : members.filter(m => m.status === s).length;
+                const active = filterStatus === s;
+                return (
+                  <button key={s} onClick={() => setFilterStatus(s)}
+                    className="rounded-2xl p-3 text-center transition-all border"
+                    style={{
+                      background: active ? `${STAT_COLORS[s]}22` : 'rgba(255,255,255,0.04)',
+                      borderColor: active ? `${STAT_COLORS[s]}55` : 'rgba(255,255,255,0.08)',
+                    }}>
+                    <div className="text-xl font-bold" style={{ color: STAT_COLORS[s] }}>{count}</div>
+                    <div className="text-[10px] text-white/50 mt-0.5">{STAT_LABELS[s]}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search + Add */}
+            <div className="flex gap-2 mb-4">
+              <input type="text" placeholder="Buscar por nombre, correo o Discord..."
+                value={search} onChange={e => setSearch(e.target.value)}
+                className="flex-1 rounded-2xl px-4 py-3 text-sm text-white outline-none"
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
+              <button onClick={() => setAddForm(f => ({ ...f, open: true }))}
+                className="px-5 py-3 rounded-2xl font-bold text-sm"
+                style={{ background: 'rgba(247,142,182,0.15)', color: '#F78EB6', border: '1px solid rgba(247,142,182,0.35)' }}>
+                + Agregar
+              </button>
+            </div>
+
+            {/* List */}
+            {loading ? (
+              <div className="text-center py-20 text-white/30 text-sm">Cargando miembros...</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-20 text-white/30 text-sm">Sin resultados</div>
+            ) : (
+              <div className="space-y-2">
+                {filtered.map(m => (
+                  <button key={m.id}
+                    className="w-full text-left rounded-2xl p-4 border transition-all hover:border-white/20"
+                    style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
+                    onClick={() => setSelected(m)}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
+                             style={{ background: 'rgba(93,218,219,0.15)', color: '#5DDADB' }}>
+                          {(m.first_name?.[0] || m.email?.[0] || '?').toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-white font-semibold text-sm truncate">
+                            {[m.first_name, m.last_name].filter(Boolean).join(' ') || 'Sin nombre'}
+                          </p>
+                          <p className="text-white/40 text-xs truncate">{m.email}</p>
+                          {m.discord_username && (
+                            <p className="text-xs" style={{ color: 'rgba(88,101,242,0.8)' }}>@{m.discord_username}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-white/30 text-xs hidden md:block">{fmtDate(m.created_at)}</span>
+                        <StatusBadge status={m.status} />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Modal: Detalle miembro */}
+          {selected && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+                 style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+              <div className="w-full max-w-md rounded-3xl border border-white/15 overflow-hidden" style={{ background: '#1a2560' }}>
+                <div className="p-6 border-b border-white/10 flex items-start justify-between">
+                  <div>
+                    <h2 className="text-white font-bold text-lg">
+                      {[selected.first_name, selected.last_name].filter(Boolean).join(' ') || 'Sin nombre'}
+                    </h2>
+                    <p className="text-white/50 text-sm">{selected.email}</p>
+                  </div>
+                  <StatusBadge status={selected.status} />
+                </div>
+                <div className="p-6 space-y-2.5 max-h-56 overflow-y-auto text-sm">
+                  {[
+                    ['Discord', selected.discord_username && '@' + selected.discord_username],
+                    ['Instagram', selected.instagram_username && '@' + selected.instagram_username],
+                    ['Celular', selected.phone],
+                    ['Registrado', fmtDate(selected.created_at)],
+                    ['Aprobado', fmtDate(selected.approved_at)],
+                    ['Último acceso', fmtDate(selected.last_access_at)],
+                    ['Vencimiento', fmtDate(selected.subscription_expires_at)],
+                  ].filter(([, v]) => v).map(([label, value]) => (
+                    <div key={label} className="flex justify-between">
+                      <span className="text-white/40">{label}</span>
+                      <span className="text-white/80 font-medium">{value}</span>
+                    </div>
+                  ))}
+                  {selected.internal_notes && (
+                    <div className="rounded-xl p-3 mt-2" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                      <p className="text-white/40 text-xs font-bold mb-1">Notas internas</p>
+                      <p className="text-white/70 text-xs">{selected.internal_notes}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="p-6 border-t border-white/10 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {actionsFor(selected.status).map(action => {
+                      const cfg = ACTIONS[action];
+                      return (
+                        <button key={action}
+                          onClick={() => setConfirmAction({ id: selected.id, email: selected.email, ...cfg })}
+                          className="py-2.5 rounded-2xl font-bold text-sm"
+                          style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+                          {cfg.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => setNotesEdit({ open: true, id: selected.id, value: selected.internal_notes || '' })}
+                    className="w-full py-2.5 rounded-2xl font-bold text-sm text-white/50"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    Editar notas internas
+                  </button>
+                  <button onClick={() => setSelected(null)}
+                    className="w-full py-2 text-white/30 hover:text-white/50 text-sm font-bold">
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Confirmar acción */}
+          {confirmAction && (
+            <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+                 style={{ background: 'rgba(0,0,0,0.85)' }}>
+              <div className="w-full max-w-sm rounded-3xl border border-white/15 p-6" style={{ background: '#1a2560' }}>
+                <h3 className="text-white font-bold text-lg mb-2">{confirmAction.label} miembro</h3>
+                <p className="text-white/60 text-sm mb-6">
+                  ¿Confirmás que querés{' '}
+                  <strong style={{ color: confirmAction.color }}>{confirmAction.label.toLowerCase()}</strong>{' '}
+                  a <strong className="text-white">{confirmAction.email}</strong>?
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setConfirmAction(null)}
+                    className="flex-1 py-3 rounded-2xl font-bold text-sm text-white/50"
+                    style={{ background: 'rgba(255,255,255,0.07)' }}>
+                    Cancelar
+                  </button>
+                  <button onClick={() => doStatusUpdate(confirmAction.id, confirmAction.next, null)}
+                    disabled={actionLoading}
+                    className="flex-1 py-3 rounded-2xl font-bold text-sm disabled:opacity-50"
+                    style={{ background: confirmAction.bg, color: confirmAction.color, border: `1px solid ${confirmAction.border}` }}>
+                    {actionLoading ? '...' : 'Confirmar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Agregar miembro */}
+          {addForm.open && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+                 style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+              <div className="w-full max-w-md rounded-3xl border border-white/15 overflow-hidden" style={{ background: '#1a2560' }}>
+                <div className="p-5 border-b border-white/10">
+                  <h2 className="text-white font-bold">Agregar miembro</h2>
+                  <p className="text-white/40 text-xs mt-1">El correo debe coincidir exactamente con el usado para iniciar sesión con Google.</p>
+                </div>
+                <div className="p-5 space-y-3 max-h-72 overflow-y-auto">
+                  {[
+                    ['email', 'Correo de Google *', 'email'],
+                    ['first_name', 'Nombre', 'text'],
+                    ['last_name', 'Apellido', 'text'],
+                    ['discord', 'Discord (sin @)', 'text'],
+                    ['instagram', 'Instagram (sin @)', 'text'],
+                    ['phone', 'Celular', 'tel'],
+                  ].map(([key, label, type]) => (
+                    <div key={key}>
+                      <label className="text-white/50 text-xs mb-1 block">{label}</label>
+                      <input type={type} value={addForm[key]}
+                        onChange={e => setAddForm(f => ({ ...f, [key]: e.target.value }))}
+                        className="w-full rounded-xl px-4 py-2.5 text-sm text-white outline-none"
+                        style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }} />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="text-white/50 text-xs mb-1 block">Notas internas</label>
+                    <textarea value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
+                      rows={2} className="w-full rounded-xl px-4 py-2.5 text-sm text-white outline-none resize-none"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }} />
+                  </div>
+                </div>
+                <div className="p-5 border-t border-white/10 flex gap-3">
+                  <button onClick={() => setAddForm(f => ({ ...f, open: false }))}
+                    className="flex-1 py-3 rounded-2xl font-bold text-sm text-white/50"
+                    style={{ background: 'rgba(255,255,255,0.07)' }}>
+                    Cancelar
+                  </button>
+                  <button onClick={doAddMember} disabled={actionLoading}
+                    className="flex-1 py-3 rounded-2xl font-bold text-sm disabled:opacity-50"
+                    style={{ background: 'rgba(247,142,182,0.15)', color: '#F78EB6', border: '1px solid rgba(247,142,182,0.35)' }}>
+                    {actionLoading ? '...' : 'Agregar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Editar notas */}
+          {notesEdit.open && (
+            <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+                 style={{ background: 'rgba(0,0,0,0.85)' }}>
+              <div className="w-full max-w-sm rounded-3xl border border-white/15 p-6" style={{ background: '#1a2560' }}>
+                <h3 className="text-white font-bold mb-4">Notas internas</h3>
+                <textarea value={notesEdit.value}
+                  onChange={e => setNotesEdit(n => ({ ...n, value: e.target.value }))}
+                  rows={4} className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none resize-none mb-4"
+                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }} />
+                <div className="flex gap-3">
+                  <button onClick={() => setNotesEdit({ open: false, id: null, value: '' })}
+                    className="flex-1 py-3 rounded-2xl font-bold text-sm text-white/50"
+                    style={{ background: 'rgba(255,255,255,0.07)' }}>
+                    Cancelar
+                  </button>
+                  <button onClick={doUpdateNotes} disabled={actionLoading}
+                    className="flex-1 py-3 rounded-2xl font-bold text-sm disabled:opacity-50"
+                    style={{ background: 'rgba(93,218,219,0.15)', color: '#5DDADB', border: '1px solid rgba(93,218,219,0.3)' }}>
+                    {actionLoading ? '...' : 'Guardar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // =====================================================================
+    // AUTH GATE — Wrapper principal
+    // =====================================================================
+    const AuthGate = () => {
+      const [session, setSession]     = useState(undefined);
+      const [member, setMember]       = useState(null);
+      const [checking, setChecking]   = useState(false);
+      const [adminMode, setAdminMode] = useState(true);
+
+      const checkAccess = async (sess) => {
+        if (!sess) { setMember(null); return; }
+        setChecking(true);
+        try {
+          const { data, error } = await sb.rpc('get_my_access');
+          if (error) throw error;
+          setMember(data?.[0] || null);
+        } catch (err) {
+          console.error('[AuthGate]', err);
+          setMember(null);
+        } finally {
+          setChecking(false);
+        }
+      };
+
+      useEffect(() => {
+        sb.auth.getSession().then(({ data: { session: sess } }) => {
+          setSession(sess);
+          if (sess) checkAccess(sess); else setChecking(false);
+        });
+
+        const { data: { subscription } } = sb.auth.onAuthStateChange((_ev, sess) => {
+          setSession(sess);
+          if (sess) checkAccess(sess);
+          else { setMember(null); setChecking(false); }
+        });
+
+        return () => subscription.unsubscribe();
+      }, []);
+
+      const signOut = async () => {
+        await sb.auth.signOut();
+        setSession(null);
+        setMember(null);
+      };
+
+      if (session === undefined || checking) return <LoadingScreen />;
+      if (!session) return <LoginScreen />;
+
+      if (!member) return (
+        <StatusScreen
+          title="Sin acceso"
+          message="Tu cuenta todavía no tiene acceso al Cotizador 3DBAT PRO 2.0."
+          extra="Recordá completar el formulario utilizando el mismo correo con el que iniciaste sesión con Google."
+          member={session.user}
+          onSignOut={signOut}
+          onRecheck={() => checkAccess(session)}
+        />
+      );
+
+      const STATUS_SCREENS = {
+        pending: {
+          title: 'Solicitud pendiente',
+          message: 'Tu solicitud está pendiente de revisión. Vamos a comprobar que tu membresía del Makers Club 3DBAT se encuentre activa.',
+        },
+        rejected: {
+          title: 'Solicitud rechazada',
+          message: 'No pudimos validar tu membresía con los datos enviados. Comunicate con la administración del Makers Club 3DBAT.',
+        },
+        suspended: {
+          title: 'Acceso suspendido',
+          message: 'Tu acceso al Cotizador 3DBAT PRO 2.0 se encuentra suspendido.',
+        },
+        expired: {
+          title: 'Membresía vencida',
+          message: 'Tu membresía del Makers Club 3DBAT se encuentra vencida.',
+        },
+      };
+
+      if (STATUS_SCREENS[member.status]) {
+        const s = STATUS_SCREENS[member.status];
+        return (
+          <StatusScreen
+            title={s.title}
+            message={s.message}
+            member={member}
+            onSignOut={signOut}
+            onRecheck={member.status === 'pending' ? () => checkAccess(session) : undefined}
+          />
+        );
+      }
+
+      if (member.status === 'approved') {
+        if (member.role === 'admin' && adminMode) {
+          return <AdminPanel onSignOut={signOut} onGoToCotizador={() => setAdminMode(false)} />;
+        }
+        return (
+          <div>
+            <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-white/10"
+                 style={{ background: 'rgba(19,29,71,0.96)', backdropFilter: 'blur(16px)' }}>
+              <span className="text-white/40">
+                {member.first_name ? `Hola, ${member.first_name}` : member.email}
+                {member.role === 'admin' && (
+                  <span className="ml-2 font-bold" style={{ color: '#F78EB6' }}>✦ Admin</span>
+                )}
+              </span>
+              <div className="flex items-center gap-4">
+                {member.role === 'admin' && (
+                  <button onClick={() => setAdminMode(true)}
+                    className="font-bold transition-colors" style={{ color: '#5DDADB' }}>
+                    Panel Admin
+                  </button>
+                )}
+                <button onClick={signOut} className="text-white/40 hover:text-white/70 font-bold transition-colors">
+                  Cerrar sesión
+                </button>
+              </div>
+            </div>
+            <App />
+          </div>
+        );
+      }
+
+      return <StatusScreen title="Sin acceso" message="Estado de cuenta no reconocido." onSignOut={signOut} />;
+    };
+
+
 
     const MATERIAL_PRESETS = [
       { name: 'PLA', costPerKg: 20000 },
@@ -2352,7 +3024,7 @@ ${t.q_confirm}`;
     const rootEl = document.getElementById('root');
     if (rootEl) {
       const root = ReactDOM.createRoot(rootEl);
-      root.render(<App />);
+      root.render(<AuthGate />);
     } else {
       console.error("Root element not found");
     }

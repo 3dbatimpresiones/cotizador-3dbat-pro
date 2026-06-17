@@ -1,3 +1,6 @@
 .DS_Store
 Thumbs.db
 *.log
+
+# SQL privado - ejecutar en Supabase dashboard
+supabase-setup.sql
