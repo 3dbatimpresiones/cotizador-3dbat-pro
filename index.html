@@ -178,20 +178,7 @@
       font-family: monospace;
     }
   </style>
-  <script>
-    // Bloquea click derecho excepto en inputs/textarea para permitir copiar texto
-    document.addEventListener('contextmenu', function(e) {
-      var tag = e.target.tagName.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
-      e.preventDefault();
-    });
-    // Bloquea F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'F12') { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.key === 'u') { e.preventDefault(); return false; }
-    });
-  </script></head>
+</head>
 
 <body class="theme-original">
   <div id="error-display"></div>
