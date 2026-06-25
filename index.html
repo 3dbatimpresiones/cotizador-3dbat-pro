@@ -3076,10 +3076,10 @@ ${t.q_confirm}`;
             </header>
 
             {/* Tabs navegación */}
-            <div className="flex justify-center mb-4">
-              <div className={`flex p-1 rounded-2xl border gap-1 ${theme.border} ${currentThemeMode === 'light' ? 'bg-slate-100' : 'bg-brand-dark/40'}`}>
-                <button onClick={() => setCurrentView('cotizador')} className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${currentView === 'cotizador' ? theme.buttonActive : theme.buttonInactive}`}>🧮 Cotizador</button>
-                <button onClick={() => setCurrentView('pedidos')} className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${currentView === 'pedidos' ? theme.buttonActive : theme.buttonInactive}`}>📦 Pedidos Pro</button>
+            <div style={{textAlign:'center',marginBottom:'16px',width:'100%'}}>
+              <div style={{display:'inline-flex',gap:'4px',padding:'4px',borderRadius:'16px',background:'rgba(30,20,80,0.7)',border:'1px solid rgba(255,255,255,0.2)'}}>
+                <button onClick={() => setCurrentView('cotizador')} style={{padding:'8px 24px',borderRadius:'12px',fontWeight:'bold',fontSize:'14px',cursor:'pointer',border:'none',background:currentView==='cotizador'?'#5DDADB':'transparent',color:currentView==='cotizador'?'#0a0a1a':'#aaa',transition:'all 0.2s'}}>🧮 Cotizador</button>
+                <button onClick={() => setCurrentView('pedidos')} style={{padding:'8px 24px',borderRadius:'12px',fontWeight:'bold',fontSize:'14px',cursor:'pointer',border:'none',background:currentView==='pedidos'?'#5DDADB':'transparent',color:currentView==='pedidos'?'#0a0a1a':'#aaa',transition:'all 0.2s'}}>📦 Pedidos Pro</button>
               </div>
             </div>
 
