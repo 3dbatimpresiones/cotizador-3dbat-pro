@@ -1915,7 +1915,6 @@ ${t.q_confirm}`;
                         <span className={`text-[10px] font-bold ${theme.textSecondary}`}>{p.numeroPedido}</span>
                         <span className={`text-[10px] ${theme.textSecondary}`}>·</span>
                         <span className={`text-[10px] ${theme.textSecondary}`}>{p.fechaCreacion}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getEstadoColor(p.estado)}`}>{p.estado}</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getPagoColor(p.economia.estadoPago)}`}>{p.economia.estadoPago}</span>
                       </div>
                       <p className={`text-base font-black truncate ${theme.textMain}`}>{p.cliente.nombre || '(Sin nombre)'}</p>
@@ -1935,6 +1934,16 @@ ${t.q_confirm}`;
                         <button onClick={() => handleEditarPedido(p)} className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${theme.buttonInactive}`}>Editar</button>
                       </div>
                     </div>
+                  </div>
+                  <div className={`mt-3 pt-3 border-t ${theme.border} flex items-center gap-2`}>
+                    <span className={`text-[10px] font-bold shrink-0 ${theme.textSecondary}`}>Estado:</span>
+                    <select
+                      value={p.estado}
+                      onChange={e => handleCambiarEstado(p.id, e.target.value)}
+                      className={`flex-1 text-xs font-bold rounded-xl px-3 py-1.5 border cursor-pointer outline-none focus:ring-1 focus:ring-brand-pink/40 ${getEstadoColor(p.estado)} bg-transparent`}
+                    >
+                      {ESTADOS_PEDIDO.map(e => <option key={e.label} value={e.label} style={{background:'#1a1a3e',color:'#fff'}}>{e.label}</option>)}
+                    </select>
                   </div>
                 </div>
               ))}
