@@ -1799,7 +1799,7 @@ ${t.q_confirm}`;
       updatedAt: new Date().toISOString(),
     });
 
-    const PedidosProModule = ({ pedidos, savePedidos, pedidoView, setPedidoView, selectedPedido, setSelectedPedido, pedidoFilter, setPedidoFilter, pedidoSearch, setPedidoSearch, theme, currentThemeMode, currency, formatCurrency }) => {
+    const PedidosProModule = ({ pedidos, savePedidos, pedidoView, setPedidoView, selectedPedido, setSelectedPedido, pedidoFilter, setPedidoFilter, pedidoSearch, setPedidoSearch, theme, currentThemeMode, currency, formatCurrency, presupuestoActual }) => {
       const currencySymbol = currency === 'ARS' ? '$' : 'U$D';
 
       const getEstadoColor = (estado) => {
@@ -1863,7 +1863,7 @@ ${t.q_confirm}`;
       };
 
       if (pedidoView === 'form') {
-        return <PedidoForm pedido={selectedPedido} onGuardar={handleGuardarPedido} onCancelar={handleVolver} theme={theme} currentThemeMode={currentThemeMode} currencySymbol={currencySymbol} formatCurrency={formatCurrency} />;
+        return <PedidoForm pedido={selectedPedido} presupuestoActual={selectedPedido ? null : presupuestoActual} onGuardar={handleGuardarPedido} onCancelar={handleVolver} theme={theme} currentThemeMode={currentThemeMode} currencySymbol={currencySymbol} formatCurrency={formatCurrency} />;
       }
       if (pedidoView === 'detail' && selectedPedido) {
         return <PedidoDetail pedido={selectedPedido} onEditar={() => handleEditarPedido(selectedPedido)} onVolver={handleVolver} onEliminar={handleEliminarPedido} onCambiarEstado={handleCambiarEstado} onRegistrarPago={handleRegistrarPago} getEstadoColor={getEstadoColor} getPagoColor={getPagoColor} theme={theme} currentThemeMode={currentThemeMode} currencySymbol={currencySymbol} formatCurrency={formatCurrency} />;
@@ -1953,10 +1953,37 @@ ${t.q_confirm}`;
       );
     };
 
-    const PedidoForm = ({ pedido, onGuardar, onCancelar, theme, currentThemeMode, currencySymbol, formatCurrency }) => {
+    const PedidoForm = ({ pedido, presupuestoActual, onGuardar, onCancelar, theme, currentThemeMode, currencySymbol, formatCurrency }) => {
       const isEditing = !!pedido;
       const [form, setForm] = useState(() => pedido ? JSON.parse(JSON.stringify(pedido)) : pedidoVacio());
       const [errors, setErrors] = useState({});
+      const [bannerVisible, setBannerVisible] = useState(true);
+
+      const hasPresupuesto = !isEditing && presupuestoActual && bannerVisible &&
+        (presupuestoActual.clienteNombre || presupuestoActual.costoTotal > 0 || presupuestoActual.trabajoTitulo);
+
+      const importarPresupuesto = () => {
+        const p = presupuestoActual;
+        setForm(f => {
+          const costoTotal = p.costoTotal || f.economia.costoTotal;
+          const montoAbonado = f.economia.montoAbonado;
+          const saldo = Math.max(0, costoTotal - montoAbonado);
+          const ep = montoAbonado === 0 ? 'Sin pagar' : montoAbonado >= costoTotal ? 'Pagado' : 'Parcial';
+          return {
+            ...f,
+            cliente: { ...f.cliente, nombre: p.clienteNombre || f.cliente.nombre },
+            trabajo: {
+              ...f.trabajo,
+              titulo: p.trabajoTitulo || f.trabajo.titulo,
+              material: p.material || f.trabajo.material,
+              tiempoEstimado: p.tiempoEstimado || f.trabajo.tiempoEstimado,
+              gramosEstimados: p.gramosEstimados || f.trabajo.gramosEstimados,
+            },
+            economia: { ...f.economia, costoTotal, saldoPendiente: saldo, estadoPago: ep },
+          };
+        });
+        setBannerVisible(false);
+      };
 
       const setCliente = (k, v) => setForm(f => ({ ...f, cliente: { ...f.cliente, [k]: v } }));
       const setTrabajo = (k, v) => setForm(f => ({ ...f, trabajo: { ...f.trabajo, [k]: v } }));
@@ -1993,6 +2020,24 @@ ${t.q_confirm}`;
             <h2 className={`text-2xl font-black ${theme.textMain}`}>{isEditing ? '✏️ Editar Pedido' : '➕ Nuevo Pedido'}</h2>
             <button onClick={onCancelar} className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${theme.buttonInactive}`}>← Cancelar</button>
           </div>
+
+          {hasPresupuesto && (
+            <div className={`mb-5 rounded-2xl border-2 border-brand-pink/40 p-4 flex items-start gap-3 ${currentThemeMode === 'light' ? 'bg-brand-pink/5' : 'bg-brand-pink/10'}`}>
+              <div className="text-2xl shrink-0">📋</div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-black mb-0.5 ${theme.textMain}`}>¿Importar datos del presupuesto actual?</p>
+                <p className={`text-xs ${theme.textSecondary}`}>
+                  {presupuestoActual.clienteNombre && <span className="mr-3">👤 {presupuestoActual.clienteNombre}</span>}
+                  {presupuestoActual.trabajoTitulo && <span className="mr-3">📦 {presupuestoActual.trabajoTitulo}</span>}
+                  {presupuestoActual.costoTotal > 0 && <span>{currencySymbol}{formatCurrency(presupuestoActual.costoTotal)}</span>}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={importarPresupuesto} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-brand-pink text-white hover:brightness-110 transition-all">✅ Importar</button>
+                <button onClick={() => setBannerVisible(false)} className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${theme.buttonInactive}`}>✕</button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-6">
             <div className={`${theme.card} rounded-3xl p-6`}>
@@ -3548,6 +3593,14 @@ ${t.q_confirm}`;
                 currentThemeMode={currentThemeMode}
                 currency={currency}
                 formatCurrency={formatCurrency}
+                presupuestoActual={{
+                  clienteNombre: customerName,
+                  trabajoTitulo: state.jobName,
+                  material: state.material,
+                  tiempoEstimado: (state.printTimeHours > 0 || state.printTimeMinutes > 0) ? `${state.printTimeHours}h ${state.printTimeMinutes}min` : '',
+                  gramosEstimados: state.weightGrams,
+                  costoTotal: breakdown.publicPrice,
+                }}
               />
             )}
             {showResetConfirm && (<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"><div className={`${theme.card} max-w-sm w-full p-6 rounded-2xl border ${theme.border} shadow-2xl relative transform transition-all scale-100`}><h3 className={`text-xl font-bold mb-2 ${theme.textMain}`}>{t.confirm_reset_title}</h3><p className={`text-sm mb-6 ${theme.textSecondary}`}>{t.confirm_reset_desc}</p><div className="flex gap-3"><button onClick={() => setShowResetConfirm(false)} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-colors ${theme.buttonInactive}`}>{t.cancel}</button><button onClick={confirmReset} className="flex-1 py-3 rounded-xl font-bold text-sm bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-colors">{t.confirm_delete}</button></div></div></div>)
