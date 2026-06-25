@@ -1873,7 +1873,7 @@ ${t.q_confirm}`;
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className={`text-2xl font-black ${theme.textMain}`}>📦 Pedidos Pro</h2>
+              <h2 className={`text-2xl font-black ${theme.textMain}`}>📦 Pedidos realizados</h2>
               <p className={`text-sm ${theme.textSecondary}`}>{pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} registrado{pedidos.length !== 1 ? 's' : ''}</p>
             </div>
             <button onClick={handleNuevoPedido} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm bg-brand-pink text-white shadow-lg shadow-brand-pink/30 hover:brightness-110 hover:scale-105 transition-all">
@@ -3088,7 +3088,7 @@ ${t.q_confirm}`;
             <div style={{textAlign:'center',marginBottom:'16px',width:'100%'}}>
               <div style={{display:'inline-flex',gap:'4px',padding:'4px',borderRadius:'16px',background:'rgba(30,20,80,0.7)',border:'1px solid rgba(255,255,255,0.2)'}}>
                 <button onClick={() => setCurrentView('cotizador')} style={{padding:'8px 24px',borderRadius:'12px',fontWeight:'bold',fontSize:'14px',cursor:'pointer',border:'none',background:currentView==='cotizador'?'#5DDADB':'transparent',color:currentView==='cotizador'?'#0a0a1a':'#aaa',transition:'all 0.2s'}}>🧮 Cotizador</button>
-                <button onClick={() => setCurrentView('pedidos')} style={{padding:'8px 24px',borderRadius:'12px',fontWeight:'bold',fontSize:'14px',cursor:'pointer',border:'none',background:currentView==='pedidos'?'#5DDADB':'transparent',color:currentView==='pedidos'?'#0a0a1a':'#aaa',transition:'all 0.2s'}}>📦 Pedidos Pro</button>
+                <button onClick={() => setCurrentView('pedidos')} style={{padding:'8px 24px',borderRadius:'12px',fontWeight:'bold',fontSize:'14px',cursor:'pointer',border:'none',background:currentView==='pedidos'?'#5DDADB':'transparent',color:currentView==='pedidos'?'#0a0a1a':'#aaa',transition:'all 0.2s'}}>📦 Pedidos realizados</button>
               </div>
             </div>
 
