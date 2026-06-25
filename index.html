@@ -2721,8 +2721,8 @@ ${t.q_confirm}`;
                                 <div>
                                   <p className={`text-[10px] font-bold mb-1 ml-1 ${theme.textSecondary}`}>Costo /kg</p>
                                   <div className="relative">
-                                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold ${theme.inputPrefix}`}>{currencySymbol}</span>
-                                    <input type="number" value={f.costPerKg || ''} onChange={(e) => updateFilament(f.id, 'costPerKg', parseFloat(e.target.value)||0)} onFocus={(e)=>e.target.select()} placeholder="0" className={`w-full rounded-xl py-2.5 pl-7 pr-4 text-sm font-bold focus:outline-none focus:ring-2 ${theme.input}`} />
+                                    <input type="number" value={f.costPerKg || ''} onChange={(e) => updateFilament(f.id, 'costPerKg', parseFloat(e.target.value)||0)} onFocus={(e)=>e.target.select()} placeholder="0" className={`w-full rounded-xl py-2.5 pl-4 pr-12 text-sm font-bold focus:outline-none focus:ring-2 ${theme.input}`} />
+                                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold ${theme.inputSuffix}`}>{currencySymbol}/k</span>
                                   </div>
                                 </div>
                               </div>
