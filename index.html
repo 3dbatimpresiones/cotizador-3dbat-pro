@@ -2314,7 +2314,7 @@ ${t.q_confirm}`;
       // Estados Pedidos Pro
       const [currentView, setCurrentView] = useState('cotizador');
       const [pedidos, setPedidos] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('3dbat_pedidos') || '[]'); } catch { return []; }
+        try { return JSON.parse(localStorage.getItem('3dbat_pedidos') || '[]'); } catch (e) { return []; }
       });
       const [pedidoView, setPedidoView] = useState('list');
       const [selectedPedido, setSelectedPedido] = useState(null);
