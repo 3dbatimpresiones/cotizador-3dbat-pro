@@ -2678,46 +2678,84 @@ ${t.q_confirm}`;
                     </div>
                   ) : (
                     <div className="mb-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <label className={`text-xs font-bold uppercase tracking-wider ${theme.accent}`}>🧩 Mix de Filamentos</label>
+                      {/* Header del mix */}
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-bold ${theme.textSecondary}`}>{filamentMix.reduce((s,f)=>s+f.weightGrams,0)}g total</span>
-                          <button onClick={() => { playClickSound(); setIsMixMode(false); setFilamentMix([]); }} className={`text-[10px] font-bold px-2 py-1 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all`}>
-                            <X size={10} />
-                          </button>
+                          <span style={{fontSize:'16px'}}>🧩</span>
+                          <label className={`text-sm font-black uppercase tracking-wider ${theme.accent}`}>Mix de Filamentos</label>
                         </div>
+                        <button onClick={() => { playClickSound(); setIsMixMode(false); setFilamentMix([]); }} className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/15 transition-all">
+                          <X size={12} /> Cancelar mix
+                        </button>
                       </div>
-                      <div className="space-y-3">
-                        {filamentMix.map((f) => (
-                          <div key={f.id} className={`p-3 rounded-2xl border ${currentThemeMode === 'light' ? 'bg-white border-slate-200' : 'bg-brand-dark/50 border-brand-indigo/30'}`}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className={`text-xs font-bold ${theme.accent}`}>{f.material}</span>
-                              <button onClick={() => removeFilament(f.id)} className="text-red-400 hover:text-red-300 transition-colors p-0.5"><X size={13} /></button>
+
+                      {/* Cards de cada filamento */}
+                      <div className="space-y-4">
+                        {filamentMix.map((f, idx) => (
+                          <div key={f.id} className={`rounded-3xl border-2 overflow-hidden ${currentThemeMode === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-brand-indigo/20 border-brand-indigo/40'}`}>
+                            {/* Título del filamento */}
+                            <div className={`flex items-center justify-between px-5 py-3 border-b ${currentThemeMode === 'light' ? 'bg-slate-50 border-slate-100' : 'bg-brand-indigo/30 border-brand-indigo/30'}`}>
+                              <span className={`text-xs font-black uppercase tracking-widest ${theme.accent}`}>Filamento {idx + 1} — {f.material}</span>
+                              {filamentMix.length > 1 && (
+                                <button onClick={() => removeFilament(f.id)} className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all"><X size={14} /></button>
+                              )}
                             </div>
-                            <div className="grid grid-cols-3 gap-1 mb-2">
-                              {MATERIAL_PRESETS.map(m => (
-                                <button key={m.name} onClick={() => { playClickSound(); updateFilament(f.id, 'material', m.name, m.costPerKg); }} className={`px-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${f.material === m.name ? theme.buttonActive : theme.buttonInactive}`}>{m.name}</button>
-                              ))}
-                            </div>
-                            <div className="flex gap-2">
-                              <div className="relative flex-1">
-                                <input type="number" value={f.weightGrams || ''} onChange={(e) => updateFilament(f.id, 'weightGrams', parseFloat(e.target.value)||0)} onFocus={(e)=>e.target.select()} placeholder="0" className={`w-full rounded-xl py-2 pl-3 pr-7 text-sm font-bold focus:outline-none focus:ring-2 ${theme.input}`} />
-                                <span className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold ${theme.inputSuffix}`}>g</span>
+
+                            <div className="px-5 py-4 space-y-4">
+                              {/* Selector de material */}
+                              <div>
+                                <p className={`text-xs font-bold mb-2 ${theme.textSecondary}`}>Material</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {MATERIAL_PRESETS.map(m => (
+                                    <button key={m.name} onClick={() => { playClickSound(); updateFilament(f.id, 'material', m.name, m.costPerKg); }} className={`py-2 rounded-xl text-xs font-bold transition-all border ${f.material === m.name ? theme.buttonActive : theme.buttonInactive}`}>{m.name}</button>
+                                  ))}
+                                </div>
                               </div>
-                              <div className="relative flex-1">
-                                <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold ${theme.inputPrefix}`}>{currencySymbol}</span>
-                                <input type="number" value={f.costPerKg || ''} onChange={(e) => updateFilament(f.id, 'costPerKg', parseFloat(e.target.value)||0)} onFocus={(e)=>e.target.select()} placeholder="0" className={`w-full rounded-xl py-2 pl-7 pr-3 text-sm font-bold focus:outline-none focus:ring-2 ${theme.input}`} />
+
+                              {/* Peso */}
+                              <div>
+                                <p className={`text-xs font-bold mb-2 ${theme.textSecondary}`}>Peso de este filamento</p>
+                                <div className="relative">
+                                  <input type="number" value={f.weightGrams || ''} onChange={(e) => updateFilament(f.id, 'weightGrams', parseFloat(e.target.value)||0)} onFocus={(e)=>e.target.select()} placeholder="0" className={`w-full rounded-2xl py-3 pl-4 pr-12 font-bold focus:outline-none focus:ring-2 ${theme.input}`} />
+                                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold ${theme.inputSuffix}`}>g</span>
+                                </div>
                               </div>
-                            </div>
-                            <div className={`text-[10px] mt-1.5 text-right ${theme.textSecondary}`}>
-                              Costo: {currencySymbol}{formatCurrency((f.weightGrams/1000)*f.costPerKg)}
+
+                              {/* Costo por kg */}
+                              <div>
+                                <p className={`text-xs font-bold mb-2 ${theme.textSecondary}`}>Costo por kg</p>
+                                <div className="relative">
+                                  <span className={`absolute left-4 top-1/2 -translate-y-1/2 font-bold ${theme.inputPrefix}`}>{currencySymbol}</span>
+                                  <input type="number" value={f.costPerKg || ''} onChange={(e) => updateFilament(f.id, 'costPerKg', parseFloat(e.target.value)||0)} onFocus={(e)=>e.target.select()} placeholder="0" className={`w-full rounded-2xl py-3 pl-10 pr-16 font-bold focus:outline-none focus:ring-2 ${theme.input}`} />
+                                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold ${theme.inputSuffix}`}>/kg</span>
+                                </div>
+                              </div>
+
+                              {/* Subtotal */}
+                              <div className={`flex justify-between items-center pt-2 border-t ${currentThemeMode === 'light' ? 'border-slate-100' : 'border-brand-indigo/30'}`}>
+                                <span className={`text-xs font-bold ${theme.textSecondary}`}>Subtotal material</span>
+                                <span className={`text-sm font-black ${currentThemeMode === 'light' ? 'text-brand-indigo' : 'text-brand-cyan'}`}>{currencySymbol}{formatCurrency((f.weightGrams/1000)*f.costPerKg)}</span>
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
-                      <button onClick={() => { playClickSound(); addFilament(); }} className={`w-full mt-3 py-2 rounded-xl border border-dashed flex items-center justify-center gap-2 text-xs font-bold transition-all ${currentThemeMode === 'light' ? 'border-brand-indigo/30 text-brand-indigo hover:bg-brand-indigo/5' : 'border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/5'}`}>
-                        <Plus size={13} /> Agregar filamento
+
+                      {/* Botón agregar */}
+                      <button onClick={() => { playClickSound(); addFilament(); }} className={`w-full mt-4 py-3 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 text-sm font-bold transition-all ${currentThemeMode === 'light' ? 'border-brand-indigo/30 text-brand-indigo hover:bg-brand-indigo/5' : 'border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/5'}`}>
+                        <Plus size={16} /> Agregar otro filamento
                       </button>
+
+                      {/* Total general */}
+                      {filamentMix.length > 1 && (
+                        <div className={`mt-4 px-5 py-3 rounded-2xl border flex justify-between items-center ${currentThemeMode === 'light' ? 'bg-brand-indigo/5 border-brand-indigo/20' : 'bg-brand-cyan/5 border-brand-cyan/20'}`}>
+                          <div>
+                            <p className={`text-[10px] font-bold uppercase tracking-wider ${theme.textSecondary}`}>Total combinado</p>
+                            <p className={`text-xs ${theme.textSecondary}`}>{filamentMix.reduce((s,f)=>s+f.weightGrams,0)}g</p>
+                          </div>
+                          <span className={`text-lg font-black ${currentThemeMode === 'light' ? 'text-brand-indigo' : 'text-brand-cyan'}`}>{currencySymbol}{formatCurrency(filamentMix.reduce((s,f)=>s+(f.weightGrams/1000)*f.costPerKg,0))}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                   <TimeInputRow label={t.print_time} hours={state.printTimeHours} minutes={state.printTimeMinutes} onHoursChange={(v) => updateState('printTimeHours', v)} onMinutesChange={(v) => updateState('printTimeMinutes', v)} theme={theme} />
