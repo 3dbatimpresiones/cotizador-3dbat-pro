@@ -203,6 +203,8 @@
     const SUPABASE_URL      = 'https://llciggitqtseosfklbjl.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_du93qodYkSZRevJ-BgXUGw_BrFc6JMO';
     const GOOGLE_FORM_URL   = 'https://forms.gle/TTJCnphD3surkyA1A';
+    // La administración de miembros se hace en BATBOX (mismo Supabase, mismas funciones admin_*).
+    const BATBOX_ADMIN_URL  = 'https://3dbatimpresiones.github.io/batbox/#/admin?tab=miembros';
     const { createClient }  = supabase;
     const sb                = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -248,22 +250,6 @@
         <path fill="none" d="M0 0h48v48H0z"/>
       </svg>
     );
-
-    const StatusBadge = ({ status }) => {
-      const cfg = {
-        pending:   { label: 'Pendiente',  bg: 'rgba(251,191,36,0.15)',  border: 'rgba(251,191,36,0.4)',  text: '#FBBF24' },
-        approved:  { label: 'Aprobado',   bg: 'rgba(52,211,153,0.15)',  border: 'rgba(52,211,153,0.4)',  text: '#34D399' },
-        rejected:  { label: 'Rechazado',  bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.4)',   text: '#EF4444' },
-        suspended: { label: 'Suspendido', bg: 'rgba(249,115,22,0.15)',  border: 'rgba(249,115,22,0.4)',  text: '#F97316' },
-        expired:   { label: 'Vencido',    bg: 'rgba(156,163,175,0.15)', border: 'rgba(156,163,175,0.4)', text: '#9CA3AF' },
-      }[status] || { label: status, bg: 'rgba(255,255,255,0.1)', border: 'rgba(255,255,255,0.2)', text: '#fff' };
-      return (
-        <span className="text-xs font-bold px-3 py-1 rounded-full border"
-              style={{ background: cfg.bg, borderColor: cfg.border, color: cfg.text }}>
-          {cfg.label}
-        </span>
-      );
-    };
 
     const LoginScreen = () => {
       const [loading, setLoading] = useState(false);
@@ -351,402 +337,12 @@
     );
 
     // =====================================================================
-    // PANEL DE ADMINISTRACIÓN
-    // =====================================================================
-    const AdminPanel = ({ onSignOut, onGoToCotizador }) => {
-      const [members, setMembers]             = useState([]);
-      const [loading, setLoading]             = useState(true);
-      const [search, setSearch]               = useState('');
-      const [filterStatus, setFilterStatus]   = useState('all');
-      const [selected, setSelected]           = useState(null);
-      const [confirmAction, setConfirmAction] = useState(null);
-      const [addForm, setAddForm]             = useState({ open: false, email: '', first_name: '', last_name: '', discord: '', instagram: '', phone: '', notes: '' });
-      const [notesEdit, setNotesEdit]         = useState({ open: false, id: null, value: '' });
-      const [actionLoading, setActionLoading] = useState(false);
-      const [toast, setToast]                 = useState(null);
-
-      const showToast = (msg, ok = true) => {
-        setToast({ msg, ok });
-        setTimeout(() => setToast(null), 3500);
-      };
-
-      const loadMembers = async () => {
-        setLoading(true);
-        const { data, error } = await sb.rpc('admin_get_all_members');
-        if (error) showToast('Error al cargar miembros: ' + error.message, false);
-        else setMembers(data || []);
-        setLoading(false);
-      };
-
-      useEffect(() => { loadMembers(); }, []);
-
-      const doStatusUpdate = async (id, newStatus, notes) => {
-        setActionLoading(true);
-        const { error } = await sb.rpc('admin_update_member_status', {
-          p_member_id: id, p_new_status: newStatus, p_notes: notes || null
-        });
-        if (error) showToast('Error: ' + error.message, false);
-        else {
-          showToast('Acción aplicada');
-          await loadMembers();
-          setSelected(null);
-        }
-        setActionLoading(false);
-        setConfirmAction(null);
-      };
-
-      const doAddMember = async () => {
-        if (!addForm.email.trim()) return showToast('Ingresá un correo', false);
-        setActionLoading(true);
-        const { error } = await sb.rpc('admin_add_member', {
-          p_email:      addForm.email.trim(),
-          p_first_name: addForm.first_name || null,
-          p_last_name:  addForm.last_name  || null,
-          p_discord:    addForm.discord    || null,
-          p_instagram:  addForm.instagram  || null,
-          p_phone:      addForm.phone      || null,
-          p_notes:      addForm.notes      || null,
-        });
-        if (error) showToast('Error: ' + error.message, false);
-        else {
-          showToast('Miembro agregado');
-          await loadMembers();
-          setAddForm({ open: false, email: '', first_name: '', last_name: '', discord: '', instagram: '', phone: '', notes: '' });
-        }
-        setActionLoading(false);
-      };
-
-      const doUpdateNotes = async () => {
-        setActionLoading(true);
-        const { error } = await sb.rpc('admin_update_notes', {
-          p_member_id: notesEdit.id, p_notes: notesEdit.value
-        });
-        if (error) showToast('Error: ' + error.message, false);
-        else {
-          showToast('Notas actualizadas');
-          await loadMembers();
-          setNotesEdit({ open: false, id: null, value: '' });
-        }
-        setActionLoading(false);
-      };
-
-      const filtered = members.filter(m => {
-        const q = search.toLowerCase();
-        const matchSearch = !q
-          || m.email?.toLowerCase().includes(q)
-          || m.first_name?.toLowerCase().includes(q)
-          || m.last_name?.toLowerCase().includes(q)
-          || m.discord_username?.toLowerCase().includes(q);
-        const matchStatus = filterStatus === 'all' || m.status === filterStatus;
-        return matchSearch && matchStatus;
-      });
-
-      const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
-
-      const ACTIONS = {
-        approved:   { label: 'Aprobar',    next: 'approved',  color: '#34D399', bg: 'rgba(52,211,153,0.15)',  border: 'rgba(52,211,153,0.35)' },
-        rejected:   { label: 'Rechazar',   next: 'rejected',  color: '#EF4444', bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.35)' },
-        suspended:  { label: 'Suspender',  next: 'suspended', color: '#F97316', bg: 'rgba(249,115,22,0.15)',  border: 'rgba(249,115,22,0.35)' },
-        reactivate: { label: 'Reactivar',  next: 'approved',  color: '#5DDADB', bg: 'rgba(93,218,219,0.15)',  border: 'rgba(93,218,219,0.35)' },
-        expired:    { label: 'Vencer',     next: 'expired',   color: '#9CA3AF', bg: 'rgba(156,163,175,0.15)', border: 'rgba(156,163,175,0.35)' },
-      };
-
-      const actionsFor = (status) => ({
-        pending:   ['approved', 'rejected'],
-        approved:  ['suspended', 'expired', 'rejected'],
-        suspended: ['reactivate', 'rejected'],
-        rejected:  ['reactivate'],
-        expired:   ['reactivate', 'suspended'],
-      }[status] || []);
-
-      const STAT_COLORS = { all: '#5DDADB', pending: '#FBBF24', approved: '#34D399', suspended: '#F97316', rejected: '#EF4444' };
-      const STAT_LABELS = { all: 'Total', pending: 'Pendientes', approved: 'Aprobados', suspended: 'Suspendidos', rejected: 'Rechazados' };
-
-      return (
-        <div className="min-h-screen" style={{ background: '#131D47' }}>
-
-          {/* Toast */}
-          {toast && (
-            <div className="fixed top-4 right-4 z-[400] px-5 py-3 rounded-2xl font-bold text-sm shadow-2xl"
-                 style={{ background: toast.ok ? '#34D399' : '#EF4444', color: 'white' }}>
-              {toast.msg}
-            </div>
-          )}
-
-          {/* Header */}
-          <div className="sticky top-0 z-50 border-b border-white/10"
-               style={{ background: 'rgba(19,29,71,0.96)', backdropFilter: 'blur(16px)' }}>
-            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-              <div>
-                <h1 className="text-white font-bold text-base leading-tight">Panel Admin</h1>
-                <p className="text-white/40 text-xs">Makers Club 3DBAT</p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={onGoToCotizador}
-                  className="px-4 py-2 rounded-xl font-bold text-sm"
-                  style={{ background: 'rgba(93,218,219,0.15)', color: '#5DDADB', border: '1px solid rgba(93,218,219,0.3)' }}>
-                  Ir al Cotizador
-                </button>
-                <button onClick={onSignOut}
-                  className="px-4 py-2 rounded-xl font-bold text-sm text-white/50"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  Salir
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="max-w-5xl mx-auto px-4 py-6">
-
-            {/* Stats */}
-            <div className="grid grid-cols-5 gap-2 mb-5">
-              {['all','pending','approved','suspended','rejected'].map(s => {
-                const count = s === 'all' ? members.length : members.filter(m => m.status === s).length;
-                const active = filterStatus === s;
-                return (
-                  <button key={s} onClick={() => setFilterStatus(s)}
-                    className="rounded-2xl p-3 text-center transition-all border"
-                    style={{
-                      background: active ? `${STAT_COLORS[s]}22` : 'rgba(255,255,255,0.04)',
-                      borderColor: active ? `${STAT_COLORS[s]}55` : 'rgba(255,255,255,0.08)',
-                    }}>
-                    <div className="text-xl font-bold" style={{ color: STAT_COLORS[s] }}>{count}</div>
-                    <div className="text-[10px] text-white/50 mt-0.5">{STAT_LABELS[s]}</div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Search + Add */}
-            <div className="flex gap-2 mb-4">
-              <input type="text" placeholder="Buscar por nombre, correo o Discord..."
-                value={search} onChange={e => setSearch(e.target.value)}
-                className="flex-1 rounded-2xl px-4 py-3 text-sm text-white outline-none"
-                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
-              <button onClick={() => setAddForm(f => ({ ...f, open: true }))}
-                className="px-5 py-3 rounded-2xl font-bold text-sm"
-                style={{ background: 'rgba(247,142,182,0.15)', color: '#F78EB6', border: '1px solid rgba(247,142,182,0.35)' }}>
-                + Agregar
-              </button>
-            </div>
-
-            {/* List */}
-            {loading ? (
-              <div className="text-center py-20 text-white/30 text-sm">Cargando miembros...</div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-20 text-white/30 text-sm">Sin resultados</div>
-            ) : (
-              <div className="space-y-2">
-                {filtered.map(m => (
-                  <button key={m.id}
-                    className="w-full text-left rounded-2xl p-4 border transition-all hover:border-white/20"
-                    style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
-                    onClick={() => setSelected(m)}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
-                             style={{ background: 'rgba(93,218,219,0.15)', color: '#5DDADB' }}>
-                          {(m.first_name?.[0] || m.email?.[0] || '?').toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-white font-semibold text-sm truncate">
-                            {[m.first_name, m.last_name].filter(Boolean).join(' ') || 'Sin nombre'}
-                          </p>
-                          <p className="text-white/40 text-xs truncate">{m.email}</p>
-                          {m.discord_username && (
-                            <p className="text-xs" style={{ color: 'rgba(88,101,242,0.8)' }}>@{m.discord_username}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="text-white/30 text-xs hidden md:block">{fmtDate(m.created_at)}</span>
-                        <StatusBadge status={m.status} />
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Modal: Detalle miembro */}
-          {selected && (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-                 style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-              <div className="w-full max-w-md rounded-3xl border border-white/15 overflow-hidden" style={{ background: '#1a2560' }}>
-                <div className="p-6 border-b border-white/10 flex items-start justify-between">
-                  <div>
-                    <h2 className="text-white font-bold text-lg">
-                      {[selected.first_name, selected.last_name].filter(Boolean).join(' ') || 'Sin nombre'}
-                    </h2>
-                    <p className="text-white/50 text-sm">{selected.email}</p>
-                  </div>
-                  <StatusBadge status={selected.status} />
-                </div>
-                <div className="p-6 space-y-2.5 max-h-56 overflow-y-auto text-sm">
-                  {[
-                    ['Discord', selected.discord_username && '@' + selected.discord_username],
-                    ['Instagram', selected.instagram_username && '@' + selected.instagram_username],
-                    ['Celular', selected.phone],
-                    ['Registrado', fmtDate(selected.created_at)],
-                    ['Aprobado', fmtDate(selected.approved_at)],
-                    ['Último acceso', fmtDate(selected.last_access_at)],
-                    ['Vencimiento', fmtDate(selected.subscription_expires_at)],
-                  ].filter(([, v]) => v).map(([label, value]) => (
-                    <div key={label} className="flex justify-between">
-                      <span className="text-white/40">{label}</span>
-                      <span className="text-white/80 font-medium">{value}</span>
-                    </div>
-                  ))}
-                  {selected.internal_notes && (
-                    <div className="rounded-xl p-3 mt-2" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                      <p className="text-white/40 text-xs font-bold mb-1">Notas internas</p>
-                      <p className="text-white/70 text-xs">{selected.internal_notes}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="p-6 border-t border-white/10 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    {actionsFor(selected.status).map(action => {
-                      const cfg = ACTIONS[action];
-                      return (
-                        <button key={action}
-                          onClick={() => setConfirmAction({ id: selected.id, email: selected.email, ...cfg })}
-                          className="py-2.5 rounded-2xl font-bold text-sm"
-                          style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
-                          {cfg.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button onClick={() => setNotesEdit({ open: true, id: selected.id, value: selected.internal_notes || '' })}
-                    className="w-full py-2.5 rounded-2xl font-bold text-sm text-white/50"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    Editar notas internas
-                  </button>
-                  <button onClick={() => setSelected(null)}
-                    className="w-full py-2 text-white/30 hover:text-white/50 text-sm font-bold">
-                    Cerrar
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Modal: Confirmar acción */}
-          {confirmAction && (
-            <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-                 style={{ background: 'rgba(0,0,0,0.85)' }}>
-              <div className="w-full max-w-sm rounded-3xl border border-white/15 p-6" style={{ background: '#1a2560' }}>
-                <h3 className="text-white font-bold text-lg mb-2">{confirmAction.label} miembro</h3>
-                <p className="text-white/60 text-sm mb-6">
-                  ¿Confirmás que querés{' '}
-                  <strong style={{ color: confirmAction.color }}>{confirmAction.label.toLowerCase()}</strong>{' '}
-                  a <strong className="text-white">{confirmAction.email}</strong>?
-                </p>
-                <div className="flex gap-3">
-                  <button onClick={() => setConfirmAction(null)}
-                    className="flex-1 py-3 rounded-2xl font-bold text-sm text-white/50"
-                    style={{ background: 'rgba(255,255,255,0.07)' }}>
-                    Cancelar
-                  </button>
-                  <button onClick={() => doStatusUpdate(confirmAction.id, confirmAction.next, null)}
-                    disabled={actionLoading}
-                    className="flex-1 py-3 rounded-2xl font-bold text-sm disabled:opacity-50"
-                    style={{ background: confirmAction.bg, color: confirmAction.color, border: `1px solid ${confirmAction.border}` }}>
-                    {actionLoading ? '...' : 'Confirmar'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Modal: Agregar miembro */}
-          {addForm.open && (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-                 style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-              <div className="w-full max-w-md rounded-3xl border border-white/15 overflow-hidden" style={{ background: '#1a2560' }}>
-                <div className="p-5 border-b border-white/10">
-                  <h2 className="text-white font-bold">Agregar miembro</h2>
-                  <p className="text-white/40 text-xs mt-1">El correo debe coincidir exactamente con el usado para iniciar sesión con Google.</p>
-                </div>
-                <div className="p-5 space-y-3 max-h-72 overflow-y-auto">
-                  {[
-                    ['email', 'Correo de Google *', 'email'],
-                    ['first_name', 'Nombre', 'text'],
-                    ['last_name', 'Apellido', 'text'],
-                    ['discord', 'Discord (sin @)', 'text'],
-                    ['instagram', 'Instagram (sin @)', 'text'],
-                    ['phone', 'Celular', 'tel'],
-                  ].map(([key, label, type]) => (
-                    <div key={key}>
-                      <label className="text-white/50 text-xs mb-1 block">{label}</label>
-                      <input type={type} value={addForm[key]}
-                        onChange={e => setAddForm(f => ({ ...f, [key]: e.target.value }))}
-                        className="w-full rounded-xl px-4 py-2.5 text-sm text-white outline-none"
-                        style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }} />
-                    </div>
-                  ))}
-                  <div>
-                    <label className="text-white/50 text-xs mb-1 block">Notas internas</label>
-                    <textarea value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
-                      rows={2} className="w-full rounded-xl px-4 py-2.5 text-sm text-white outline-none resize-none"
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }} />
-                  </div>
-                </div>
-                <div className="p-5 border-t border-white/10 flex gap-3">
-                  <button onClick={() => setAddForm(f => ({ ...f, open: false }))}
-                    className="flex-1 py-3 rounded-2xl font-bold text-sm text-white/50"
-                    style={{ background: 'rgba(255,255,255,0.07)' }}>
-                    Cancelar
-                  </button>
-                  <button onClick={doAddMember} disabled={actionLoading}
-                    className="flex-1 py-3 rounded-2xl font-bold text-sm disabled:opacity-50"
-                    style={{ background: 'rgba(247,142,182,0.15)', color: '#F78EB6', border: '1px solid rgba(247,142,182,0.35)' }}>
-                    {actionLoading ? '...' : 'Agregar'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Modal: Editar notas */}
-          {notesEdit.open && (
-            <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-                 style={{ background: 'rgba(0,0,0,0.85)' }}>
-              <div className="w-full max-w-sm rounded-3xl border border-white/15 p-6" style={{ background: '#1a2560' }}>
-                <h3 className="text-white font-bold mb-4">Notas internas</h3>
-                <textarea value={notesEdit.value}
-                  onChange={e => setNotesEdit(n => ({ ...n, value: e.target.value }))}
-                  rows={4} className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none resize-none mb-4"
-                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }} />
-                <div className="flex gap-3">
-                  <button onClick={() => setNotesEdit({ open: false, id: null, value: '' })}
-                    className="flex-1 py-3 rounded-2xl font-bold text-sm text-white/50"
-                    style={{ background: 'rgba(255,255,255,0.07)' }}>
-                    Cancelar
-                  </button>
-                  <button onClick={doUpdateNotes} disabled={actionLoading}
-                    className="flex-1 py-3 rounded-2xl font-bold text-sm disabled:opacity-50"
-                    style={{ background: 'rgba(93,218,219,0.15)', color: '#5DDADB', border: '1px solid rgba(93,218,219,0.3)' }}>
-                    {actionLoading ? '...' : 'Guardar'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    };
-
-    // =====================================================================
     // AUTH GATE — Wrapper principal
     // =====================================================================
     const AuthGate = () => {
       const [session, setSession]       = useState(undefined);
       const [member, setMember]         = useState(null);
       const [initialDone, setInitialDone] = useState(false);
-      const [adminMode, setAdminMode]   = useState(true);
 
       const checkAccess = async (sess) => {
         if (!sess) { setMember(null); setInitialDone(true); return; }
@@ -835,9 +431,6 @@
       }
 
       if (member.status === 'approved') {
-        if (member.role === 'admin' && adminMode) {
-          return <AdminPanel onSignOut={signOut} onGoToCotizador={() => setAdminMode(false)} />;
-        }
         return (
           <div>
             <div className="flex items-center justify-between px-4 py-2 text-xs border-b border-white/10"
@@ -850,10 +443,10 @@
               </span>
               <div className="flex items-center gap-4">
                 {member.role === 'admin' && (
-                  <button onClick={() => setAdminMode(true)}
+                  <a href={BATBOX_ADMIN_URL} target="_blank" rel="noopener noreferrer"
                     className="font-bold transition-colors" style={{ color: '#5DDADB' }}>
-                    Panel Admin
-                  </button>
+                    Administrar en BATBOX
+                  </a>
                 )}
                 <button onClick={signOut} className="text-white/40 hover:text-white/70 font-bold transition-colors">
                   Cerrar sesión
