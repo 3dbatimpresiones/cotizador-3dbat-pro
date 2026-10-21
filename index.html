@@ -2963,13 +2963,8 @@ ${t.q_confirm}`;
         let mc;
         if (isMixMode && filamentMix.length > 0) {
           mc = filamentMix.reduce((sum, f) => sum + (f.weightGrams / 1000) * f.costPerKg, 0);
-          if (state.wasteGrams > 0) {
-            const totalMixGrams = filamentMix.reduce((s, f) => s + f.weightGrams, 0);
-            const avgCostPerKg = totalMixGrams > 0 ? mc / (totalMixGrams / 1000) : 0;
-            mc += (state.wasteGrams / 1000) * avgCostPerKg;
-          }
         } else {
-          const totalGrams = state.weightGrams + state.wasteGrams;
+          const totalGrams = state.weightGrams;
           mc = (totalGrams / 1000) * state.materialCostPerKg;
         }
         const h = state.printTimeHours + (state.printTimeMinutes / 60);
@@ -3335,7 +3330,6 @@ ${t.q_confirm}`;
                       <span className={`text-sm font-black ${theme.accent}`}>{filamentMix.reduce((s,f)=>s+f.weightGrams,0)} g</span>
                     </div>
                   )}
-                  {isAdvancedMode && <ModernInputRow label={state.isResinMode ? "Soportes / Goteo" : t.waste_label} value={state.wasteGrams} onChange={(v) => updateState('wasteGrams', v)} suffix={state.isResinMode ? "ml" : "g"} icon={Trash2} tooltip={t.waste_tooltip} theme={theme} />}
                   
                   {!state.isResinMode && (
                     <div className="relative group mb-4">
