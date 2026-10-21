@@ -1414,11 +1414,12 @@ ${t.q_confirm}`;
     // LOGIC
     const parseGCodeContent = (content) => {
       let timeHours = 0; let timeMinutes = 0; let weight = 0; let material = null; let printerModel = null; let foundTime = false; let foundWeight = false;
-      let weightMatch = content.match(/filament used\s*\[g\]\s*=\s*([\d\.]+)/i);
-      if (!weightMatch) weightMatch = content.match(/filament used\s*=\s*.*\(?(\d+\.?\d*)g\)?/i);
-      if (!weightMatch) weightMatch = content.match(/total filament used\s*\[g\]\s*=\s*([\d\.]+)/i);
-      if (!weightMatch) weightMatch = content.match(/total filament weight\s*\[g\]\s*[:=]\s*([\d\.]+)/i);
-      if (weightMatch) { weight = parseFloat(weightMatch[1]); if (!isNaN(weight)) foundWeight = true; }
+      // Multi-extrusor (Snapmaker U1, Bambu AMS, etc.): priorizar el total y, si no existe, sumar la lista por extrusor "a, b, c, d"
+      const totalMatch = content.match(/total filament (?:used|weight)\s*\[g\]\s*[:=]\s*([\d\.]+)/i);
+      const perExtruderMatch = content.match(/filament used\s*\[g\]\s*=[ \t]*([\d\.,; \t]+)/i);
+      if (totalMatch) { weight = parseFloat(totalMatch[1]); if (!isNaN(weight)) foundWeight = true; }
+      else if (perExtruderMatch) { weight = perExtruderMatch[1].split(/[,;]/).reduce((sum, v) => sum + (parseFloat(v) || 0), 0); foundWeight = true; }
+      else { const weightMatch = content.match(/filament used\s*=\s*.*\(?(\d+\.?\d*)g\)?/i); if (weightMatch) { weight = parseFloat(weightMatch[1]); if (!isNaN(weight)) foundWeight = true; } }
       const materialRegex = /;\s*(filament_type|material_type|filament_settings_id|filament|material)\s*[:=]\s*.*?(PLA|PETG|ABS|ASA|TPU|NYLON|PA\d+|PC)/i;
       const matchMat = content.match(materialRegex);
       if (matchMat) { let matFound = matchMat[2].toUpperCase(); if (matFound.includes('PA')) matFound = 'Nylon'; material = matFound; }
