@@ -1688,7 +1688,7 @@ ${t.q_confirm}`;
         if (!budgetRef.current) return;
         try {
           if (typeof html2canvas === 'undefined') throw new Error("Librería de imagen no cargada.");
-          const canvas = await html2canvas(budgetRef.current, { scale: 2, useCORS: true, backgroundColor: null });
+          const canvas = await html2canvas(budgetRef.current, { onclone: (doc) => doc.querySelectorAll('[style*="zoom"]').forEach(el => { el.style.zoom = '1'; }), scale: 2, useCORS: true, backgroundColor: null });
           const link = document.createElement('a');
           link.download = `Presupuesto-${clientName || 'Cliente'}.png`;
           link.href = canvas.toDataURL('image/png');
