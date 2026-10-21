@@ -2964,7 +2964,7 @@ ${t.q_confirm}`;
         if (isMixMode && filamentMix.length > 0) {
           mc = filamentMix.reduce((sum, f) => sum + (f.weightGrams / 1000) * f.costPerKg, 0);
         } else {
-          const totalGrams = state.weightGrams;
+          const totalGrams = state.weightGrams + (state.isResinMode ? state.wasteGrams : 0);
           mc = (totalGrams / 1000) * state.materialCostPerKg;
         }
         const h = state.printTimeHours + (state.printTimeMinutes / 60);
@@ -3324,6 +3324,7 @@ ${t.q_confirm}`;
                   )}
                   <TimeInputRow label={t.print_time} hours={state.printTimeHours} minutes={state.printTimeMinutes} onHoursChange={(v) => updateState('printTimeHours', v)} onMinutesChange={(v) => updateState('printTimeMinutes', v)} theme={theme} />
                   {!isMixMode && <ModernInputRow label={state.isResinMode ? "Volumen de Pieza" : t.weight} value={state.weightGrams} onChange={(v) => updateState('weightGrams', v)} suffix={state.isResinMode ? "ml" : "g"} icon={Weight} theme={theme} />}
+                  {isAdvancedMode && state.isResinMode && <ModernInputRow label="Soportes / Goteo" value={state.wasteGrams} onChange={(v) => updateState('wasteGrams', v)} suffix="ml" icon={Trash2} tooltip="Mililitros de resina usados en soportes, balsa o goteo que no forman parte de la pieza final." theme={theme} />}
                   {isMixMode && (
                     <div className={`mb-4 px-4 py-3 rounded-2xl border ${currentThemeMode === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-brand-dark/30 border-brand-indigo/30'} flex justify-between items-center`}>
                       <span className={`text-xs font-bold ${theme.textSecondary}`}>Peso total filamentos</span>
