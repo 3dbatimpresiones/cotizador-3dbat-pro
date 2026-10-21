@@ -378,6 +378,41 @@
         return () => subscription.unsubscribe();
       }, []);
 
+      // Minutos de uso para el ranking de admins en BATBOX (función bb_ping).
+      // Cada minuto, si la pestaña está visible y se usó en los últimos 2 min.
+      // Si algo falla se ignora: nunca afecta a la calculadora.
+      const approved = member?.status === 'approved';
+      useEffect(() => {
+        if (!approved) return undefined;
+        let lastInput = Date.now();
+        let lastPing = 0;
+        let stopped = false;
+        const send = (minGap) => {
+          if (stopped || document.visibilityState !== 'visible' || Date.now() - lastInput > 120000) return;
+          if (Date.now() - lastPing < minGap) return;
+          lastPing = Date.now();
+          sb.rpc('bb_ping', { p_app: 'cotizador' })
+            .then(({ error }) => { if (error && (error.code === 'PGRST202' || error.code === '42883')) stopped = true; })
+            .catch(() => {});
+        };
+        const onInput = () => {
+          const wasIdle = Date.now() - lastInput > 120000;
+          lastInput = Date.now();
+          if (wasIdle) send(15000);
+        };
+        const onVisible = () => { if (document.visibilityState === 'visible') onInput(); };
+        const events = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'scroll', 'touchstart'];
+        events.forEach((e) => window.addEventListener(e, onInput, { passive: true }));
+        document.addEventListener('visibilitychange', onVisible);
+        const timer = setInterval(() => send(55000), 60000);
+        send(0);
+        return () => {
+          clearInterval(timer);
+          events.forEach((e) => window.removeEventListener(e, onInput));
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [approved]);
+
       const signOut = async () => {
         await sb.auth.signOut();
         setSession(null);
