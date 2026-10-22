@@ -202,7 +202,8 @@
     // =====================================================================
     const SUPABASE_URL      = 'https://llciggitqtseosfklbjl.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_du93qodYkSZRevJ-BgXUGw_BrFc6JMO';
-    const GOOGLE_FORM_URL   = 'https://forms.gle/TTJCnphD3surkyA1A';
+    // Solicitud de acceso al Makers Club: ahora es dentro de BATBOX (mismo origen → misma sesión).
+    const GOOGLE_FORM_URL   = 'https://3dbatimpresiones.github.io/batbox/#/acceso';
     // La administración de miembros se hace en BATBOX (mismo Supabase, mismas funciones admin_*).
     const BATBOX_ADMIN_URL  = 'https://3dbatimpresiones.github.io/batbox/#/admin?tab=miembros';
     const { createClient }  = supabase;
@@ -295,7 +296,7 @@
             Solicitar acceso al Makers Club 3DBAT →
           </a>
           <p className="text-center text-white/30 text-xs mt-6">
-            El acceso será habilitado una vez que el administrador verifique tu membresía.
+            El acceso se activa solo cuando llega tu pago del Makers Club por Mercado Pago.
           </p>
         </AuthCard>
       );
