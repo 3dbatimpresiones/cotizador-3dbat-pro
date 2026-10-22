@@ -476,6 +476,12 @@
                 {member.role === 'admin' && (
                   <span className="ml-2 font-bold" style={{ color: '#F78EB6' }}>✦ Admin</span>
                 )}
+                {member.is_trial && member.trial_ends_at && (
+                  <span className="ml-3 font-bold" style={{ color: '#F78EB6' }}>
+                    ✦ Prueba gratis · te quedan {Math.max(0, Math.ceil((new Date(member.trial_ends_at) - Date.now()) / 864e5))} días ·{' '}
+                    <a href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: '#F78EB6' }}>Suscribirme</a>
+                  </span>
+                )}
               </span>
               <div className="flex items-center gap-4">
                 {member.role === 'admin' && (
